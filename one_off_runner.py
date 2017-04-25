@@ -1,18 +1,12 @@
 import os
+import cfg
 import celery
+import signal
 import tempfile
 import subprocess
 
 
-app = celery.Celery('runner')
-app.conf.update(
-    broker_url=os.environ['BROKER'],
-    result_backend=os.environ['BACKEND'],
-    task_acks_late=True,
-    worker_prefetch_multiplier=1,
-    worker_pool='solo',
-    worker_concurrency=1,
-)
+app = celery.Celery(broker=cfg.get_broker(), backend=cfg.get_backend())
 
 
 @app.task
@@ -21,5 +15,6 @@ def run(task_id, source_code):
     f.write(source_code)
     f.flush()
     out, err = subprocess.Popen(['python3', f.name], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-    os.system('celery control shutdown')
+    with open('/tmp/celery.pid') as pid:
+        os.kill(int(pid.read()), signal.SIGTERM)
     return {'task_id': task_id, 'stdout': out.decode(), 'stderr': err.decode()}

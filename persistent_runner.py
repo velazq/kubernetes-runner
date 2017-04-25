@@ -1,21 +1,19 @@
 import os
+import cfg
 import celery
+import docker
 import tempfile
 
 
-RUNNER_IMAGE = 'alvelazq/kubernetes-runner:0.1' # Must have python3 in path
+RUNNER_IMAGE = 'alvelazq/kubernetes-runner' # Must have python3 in path
 CTRL_IMAGE_NAME = 'runner-ctrl'
 
 
-app = celery.Celery('standalone_runner')
-app.conf.update(
-    broker_url=os.environ['BROKER'],
-    result_backend=os.environ['BACKEND'],
-)
+app = celery.Celery(broker=cfg.get_broker(), backend=cfg.get_backend())
 
 
 @app.task
-def run_in_container(task_id, source_code):
+def run(task_id, source_code):
     f = tempfile.NamedTemporaryFile(mode='w', dir='/tmp/data', suffix='.py')
     f.write(source_code)
     f.flush()
